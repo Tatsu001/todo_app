@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
 import { Task, Folder, TabType } from '../types';
 import { buildTreeStructure, isValidMove } from '../utils/helpers';
@@ -33,7 +33,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
   onFolderDelete,
   onItemMove,
 }) => {
-  const renderFolder = (folder: Folder, depth: number = 0): React.ReactNode => {
+  const renderFolder = useCallback((folder: Folder, depth: number = 0) => {
     const childFolders = buildTreeStructure(folders, folder.id) as Folder[];
     const folderTasks = buildTreeStructure(tasks, folder.id) as Task[];
 
@@ -87,9 +87,9 @@ const FolderTree: React.FC<FolderTreeProps> = ({
         </div>
       </div>
     );
-  };
+  }, [folders, tasks, onTaskToggle, onTaskClick, onTaskContextMenu, onTaskAdd, onFolderAdd, onFolderUpdate, onFolderDelete]);
 
-  const handleDragEnd = (result: DropResult) => {
+  const handleDragEnd = useCallback((result: DropResult) => {
     const { destination, source, draggableId } = result;
 
     if (!destination || (
@@ -111,7 +111,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({
     }
 
     onItemMove(draggableId, newParentId, itemType);
-  };
+  }, [tasks, folders, onItemMove]);
 
   const rootFolders = buildTreeStructure(folders, null) as Folder[];
   const rootTasks = buildTreeStructure(tasks, null) as Task[];

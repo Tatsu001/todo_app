@@ -5,9 +5,6 @@ import { buildTreeStructure } from './utils/helpers';
 import { Task, Folder } from './types';
 import ContextMenu from './components/ContextMenu.simple';
 import TaskModal from './components/TaskModal.simple';
-import NameInputModal from './components/NameInputModal';
-import MoveModal from './components/MoveModal';
-import SortModal from './components/SortModal';
 
 function App() {
   console.log('App with complete features rendering...');
@@ -19,15 +16,12 @@ function App() {
       addTask, 
       addFolder,
       updateTask,
-      updateFolder,
       deleteTask,
-      deleteFolder,
       toggleTaskComplete,
       getFilteredTasks,
       moveItem,
       addTagToTask,
-      removeTagFromTask,
-      sortItems
+      removeTagFromTask
     } = useTodoStore();
     
     // Context Menu State
@@ -41,153 +35,6 @@ function App() {
     // Modal State
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    
-    // Folder Editing State
-    const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
-    const [editingFolderName, setEditingFolderName] = useState('');
-    
-    // Name Input Modal State
-    const [nameInputModal, setNameInputModal] = useState({
-      isOpen: false,
-      title: '',
-      placeholder: '',
-      type: '' as 'task' | 'folder',
-      parentId: null as string | null,
-    });
-    
-    // Move Modal State
-    const [moveModal, setMoveModal] = useState({
-      isOpen: false,
-      title: '',
-      itemId: '',
-      itemName: '',
-      itemType: '' as 'task' | 'folder',
-      currentParentId: null as string | null,
-    });
-    
-    // Sort Modal State
-    const [sortModal, setSortModal] = useState({
-      isOpen: false,
-      title: '',
-      items: [] as (Task | Folder)[],
-      itemType: '' as 'task' | 'folder',
-      parentId: null as string | null,
-    });
-    
-    // Folder Editing Handlers
-    const startFolderEdit = (folderId: string, currentName: string) => {
-      setEditingFolderId(folderId);
-      setEditingFolderName(currentName);
-    };
-
-    const saveFolderEdit = () => {
-      if (!editingFolderId || !editingFolderName.trim()) return;
-      
-      updateFolder(editingFolderId, { name: editingFolderName.trim() });
-      setEditingFolderId(null);
-      setEditingFolderName('');
-    };
-
-    const cancelFolderEdit = () => {
-      setEditingFolderId(null);
-      setEditingFolderName('');
-    };
-
-    const handleFolderKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        saveFolderEdit();
-      } else if (e.key === 'Escape') {
-        cancelFolderEdit();
-      }
-    };
-    
-    // Name Input Modal Handlers
-    const openNameInputModal = (type: 'task' | 'folder', parentId: string | null = null) => {
-      setNameInputModal({
-        isOpen: true,
-        title: type === 'task' ? '新しいタスクを作成' : '新しいフォルダを作成',
-        placeholder: type === 'task' ? 'タスク名を入力してください' : 'フォルダ名を入力してください',
-        type,
-        parentId,
-      });
-    };
-
-    const closeNameInputModal = () => {
-      setNameInputModal({
-        isOpen: false,
-        title: '',
-        placeholder: '',
-        type: '' as 'task' | 'folder',
-        parentId: null,
-      });
-    };
-
-    const handleNameInputSave = (name: string) => {
-      if (nameInputModal.type === 'task') {
-        addTask(name, nameInputModal.parentId);
-      } else {
-        addFolder(name, nameInputModal.parentId);
-      }
-    };
-    
-    // Move Modal Handlers
-    const openMoveModal = (itemId: string, itemName: string, itemType: 'task' | 'folder', currentParentId: string | null) => {
-      setMoveModal({
-        isOpen: true,
-        title: itemType === 'task' ? 'タスクを移動' : 'フォルダを移動',
-        itemId,
-        itemName,
-        itemType,
-        currentParentId,
-      });
-    };
-
-    const closeMoveModal = () => {
-      setMoveModal({
-        isOpen: false,
-        title: '',
-        itemId: '',
-        itemName: '',
-        itemType: '' as 'task' | 'folder',
-        currentParentId: null,
-      });
-    };
-
-    const handleMove = (newParentId: string | null) => {
-      moveItem(moveModal.itemId, newParentId, moveModal.itemType);
-    };
-    
-    // Sort Modal Handlers
-    const openSortModal = (items: (Task | Folder)[], itemType: 'task' | 'folder', parentId: string | null) => {
-      if (items.length <= 1) {
-        alert('並べ替えするアイテムが2個以上必要です');
-        return;
-      }
-      
-      setSortModal({
-        isOpen: true,
-        title: itemType === 'task' 
-          ? (parentId ? 'フォルダ内タスクの並び替え' : 'ルートタスクの並び替え')
-          : (parentId ? 'サブフォルダの並び替え' : 'ルートフォルダの並び替え'),
-        items: [...items],
-        itemType,
-        parentId,
-      });
-    };
-
-    const closeSortModal = () => {
-      setSortModal({
-        isOpen: false,
-        title: '',
-        items: [],
-        itemType: '' as 'task' | 'folder',
-        parentId: null,
-      });
-    };
-
-    const handleSort = (sortedItems: (Task | Folder)[]) => {
-      sortItems(sortedItems, sortModal.itemType);
-    };
     
     const filteredTasks = getFilteredTasks(state.activeTab);
     
@@ -226,7 +73,7 @@ function App() {
       ? filteredTasks.find(t => t.id === contextMenu.taskId) || null
       : null;
     
-    // Task Component
+    // Draggable Task Component
     const TaskComponent = ({ task }: { task: Task }) => (
       <div
         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg group cursor-pointer hover:bg-gray-100 transition-colors"
@@ -281,17 +128,35 @@ function App() {
         </div>
         
         {/* タスク移動ボタン */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              openMoveModal(task.id, task.title, 'task', task.parentId);
+              moveItem(task.id, null, 'task');
             }}
-            className="text-xs px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
-            title="タスクを移動"
+            className="text-xs px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
+            title="Move to root"
           >
-            📦 移動
+            ↑ Root
           </button>
+          
+          {/* 他のフォルダへの移動ボタン */}
+          {state.folders
+            .filter(f => f.parentId !== task.parentId)
+            .slice(0, 2)
+            .map(targetFolder => (
+              <button
+                key={targetFolder.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  moveItem(task.id, targetFolder.id, 'task');
+                }}
+                className="text-xs px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
+                title={`Move to ${targetFolder.name}`}
+              >
+                → {targetFolder.name.substring(0, 6)}
+              </button>
+            ))}
         </div>
       </div>
     );
@@ -304,97 +169,36 @@ function App() {
       return (
         <div 
           key={folder.id} 
-          className={`mb-4 ${depth > 0 ? 'ml-8' : ''}`}
+          className={`mb-4 ${depth > 0 ? 'ml-6' : ''}`}
         >
           {/* フォルダヘッダー */}
           <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg mb-2">
-            <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center gap-3">
               <span className="text-blue-500">📁</span>
-              {editingFolderId === folder.id ? (
-                <input
-                  type="text"
-                  value={editingFolderName}
-                  onChange={(e) => setEditingFolderName(e.target.value)}
-                  onKeyDown={handleFolderKeyDown}
-                  onBlur={saveFolderEdit}
-                  className="font-medium text-blue-800 bg-white border border-blue-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
-                  autoFocus
-                />
-              ) : (
-                <span 
-                  className="font-medium text-blue-800 cursor-pointer hover:underline"
-                  onClick={() => startFolderEdit(folder.id, folder.name)}
-                  title="クリックして名前を編集"
-                >
-                  {folder.name}
-                </span>
-              )}
+              <span className="font-medium text-blue-800">{folder.name}</span>
               <span className="text-sm text-blue-600">({folderTasks.length} tasks)</span>
             </div>
             
             {/* フォルダアクション */}
             <div className="flex gap-2">
               <button
-                onClick={() => openNameInputModal('task', folder.id)}
+                onClick={() => addTask(`Task in ${folder.name}`, folder.id)}
                 className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
                 title="Add task to this folder"
               >
                 + Task
               </button>
               <button
-                onClick={() => openNameInputModal('folder', folder.id)}
+                onClick={() => addFolder(`Subfolder of ${folder.name}`, folder.id)}
                 className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
                 title="Add subfolder"
               >
                 + Folder
               </button>
               <button
-                onClick={() => startFolderEdit(folder.id, folder.name)}
-                className="text-xs px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-                title="Edit folder name"
-              >
-                ✏️
-              </button>
-              <button
-                onClick={() => openMoveModal(folder.id, folder.name, 'folder', folder.parentId)}
-                className="text-xs px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
-                title="Move folder"
-              >
-                📦
-              </button>
-              <button
-                onClick={() => {
-                  const siblingFolders = buildTreeStructure(state.folders, folder.parentId) as Folder[];
-                  openSortModal(siblingFolders, 'folder', folder.parentId);
-                }}
-                className="text-xs px-2 py-1 bg-orange-500 text-white rounded hover:bg-orange-600"
-                title="Sort sibling folders"
-              >
-                ⇅
-              </button>
-              <button
-                onClick={() => {
-                  const childFolders = buildTreeStructure(state.folders, folder.id) as Folder[];
-                  openSortModal(childFolders, 'folder', folder.id);
-                }}
-                className="text-xs px-2 py-1 bg-orange-500 text-white rounded hover:bg-orange-600"
-                title="Sort child folders"
-              >
-                ⇅📁
-              </button>
-              <button
-                onClick={() => {
-                  openSortModal(folderTasks, 'task', folder.id);
-                }}
-                className="text-xs px-2 py-1 bg-orange-500 text-white rounded hover:bg-orange-600"
-                title="Sort tasks in folder"
-              >
-                ⇅📋
-              </button>
-              <button
                 onClick={() => {
                   if (window.confirm(`フォルダ「${folder.name}」とその中身を削除しますか？`)) {
-                    deleteFolder(folder.id);
+                    // Delete folder logic would go here
                   }
                 }}
                 className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
@@ -406,10 +210,18 @@ function App() {
           </div>
           
           {/* フォルダ内のタスク */}
-          <div className="ml-8 space-y-2">
+          <div className="ml-6 space-y-2">
             {folderTasks.map((task) => (
               <TaskComponent key={task.id} task={task} />
             ))}
+            
+            {folderTasks.length === 0 && (
+              <div className="p-4 text-center text-gray-500 bg-gray-100 rounded-lg border-2 border-dashed">
+                No tasks in this folder yet
+                <br />
+                <span className="text-sm">Click "+ Task" above to add one</span>
+              </div>
+            )}
           </div>
           
           {/* 子フォルダの再帰的表示 */}
@@ -468,33 +280,19 @@ function App() {
               )}
               
               {/* 追加ボタン */}
-              <div className="flex gap-3 flex-wrap">
+              <div className="flex gap-3">
                 <button
-                  onClick={() => openNameInputModal('task', null)}
+                  onClick={() => addTask(`Task ${Date.now()}`, null)}
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                 >
                   Add Root Task
                 </button>
                 
                 <button
-                  onClick={() => openNameInputModal('folder', null)}
+                  onClick={() => addFolder(`Folder ${Date.now()}`, null)}
                   className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
                 >
                   Add Folder
-                </button>
-                
-                <button
-                  onClick={() => openSortModal(rootFolders, 'folder', null)}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                >
-                  ⇅ Sort Folders
-                </button>
-                
-                <button
-                  onClick={() => openSortModal(rootTasks, 'task', null)}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                >
-                  ⇅ Sort Tasks
                 </button>
               </div>
               
@@ -552,38 +350,6 @@ function App() {
               updateTask(selectedTask.id, updates);
             }
           }}
-        />
-
-        {/* Name Input Modal */}
-        <NameInputModal
-          isOpen={nameInputModal.isOpen}
-          title={nameInputModal.title}
-          placeholder={nameInputModal.placeholder}
-          onClose={closeNameInputModal}
-          onSave={handleNameInputSave}
-        />
-
-        {/* Move Modal */}
-        <MoveModal
-          isOpen={moveModal.isOpen}
-          title={moveModal.title}
-          itemName={moveModal.itemName}
-          itemId={moveModal.itemId}
-          itemType={moveModal.itemType}
-          currentParentId={moveModal.currentParentId}
-          folders={state.folders}
-          onClose={closeMoveModal}
-          onMove={handleMove}
-        />
-
-        {/* Sort Modal */}
-        <SortModal
-          isOpen={sortModal.isOpen}
-          title={sortModal.title}
-          items={sortModal.items}
-          itemType={sortModal.itemType}
-          onClose={closeSortModal}
-          onSave={handleSort}
         />
       </div>
     );

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Task, Folder } from '../types';
-import { getItemDepth, truncateText } from '../utils/helpers';
+import { truncateText } from '../utils/helpers';
 
 interface TaskItemProps {
   task: Task;
@@ -15,12 +15,11 @@ interface TaskItemProps {
 const TaskItem: React.FC<TaskItemProps> = ({
   task,
   index,
-  allItems,
+  allItems: _allItems,
   onToggleComplete,
   onTaskClick,
   onContextMenu,
 }) => {
-  const depth = getItemDepth(task.id, allItems);
 
   return (
     <Draggable draggableId={task.id} index={index}>
@@ -36,7 +35,6 @@ const TaskItem: React.FC<TaskItemProps> = ({
           `}
           style={{
             ...provided.draggableProps.style,
-            marginLeft: `${depth * 20}px`,
           }}
           onClick={() => onTaskClick(task)}
           onContextMenu={(e) => onContextMenu(e, task.id)}

@@ -7,12 +7,19 @@ export function buildTreeStructure(
   return items
     .filter(item => item.parentId === parentId)
     .sort((a, b) => {
+      // orderフィールドでソート（優先）
+      if (a.order !== b.order) {
+        return a.order - b.order;
+      }
+      
+      // タスクの場合は完了状態でセカンダリソート
       if ('completed' in a && 'completed' in b) {
         if (a.completed !== b.completed) {
           return a.completed ? 1 : -1;
         }
       }
       
+      // 最後は名前でソート
       const aName = 'name' in a ? a.name : 'title' in a ? a.title : '';
       const bName = 'name' in b ? b.name : 'title' in b ? b.title : '';
       

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Task, Folder, TabType, TodoState } from '../types';
 import { useLocalStorage } from './useLocalStorage';
@@ -11,6 +11,32 @@ const initialState: TodoState = {
 
 export function useTodoStore() {
   const [state, setState] = useLocalStorage<TodoState>('todoAppState', initialState);
+  
+  // 既存データのorderフィールドを初期化（マイグレーション）
+  React.useEffect(() => {
+    const needsMigration = state.tasks.some(task => typeof task.order === 'undefined') ||
+                          state.folders.some(folder => typeof folder.order === 'undefined');
+                          
+    if (needsMigration) {
+      setState(prev => {
+        const migratedTasks = prev.tasks.map((task, index) => ({
+          ...task,
+          order: typeof task.order === 'undefined' ? index : task.order
+        }));
+        
+        const migratedFolders = prev.folders.map((folder, index) => ({
+          ...folder,
+          order: typeof folder.order === 'undefined' ? index : folder.order
+        }));
+        
+        return {
+          ...prev,
+          tasks: migratedTasks,
+          folders: migratedFolders
+        };
+      });
+    }
+  }, [state.tasks, state.folders, setState]);
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
     x: number;
@@ -28,16 +54,24 @@ export function useTodoStore() {
   }, [setState]);
 
   const addTask = useCallback((title: string, parentId: string | null = null) => {
-    const newTask: Task = {
-      id: uuidv4(),
-      title,
-      memo: '',
-      completed: false,
-      tags: [],
-      parentId,
-    };
-    setState(prev => ({ ...prev, tasks: [...prev.tasks, newTask] }));
-    return newTask.id;
+    setState(prev => {
+      // 同じ親のタスクの中で最大のorderを取得
+      const siblingTasks = prev.tasks.filter(t => t.parentId === parentId);
+      const maxOrder = siblingTasks.length > 0 
+        ? Math.max(...siblingTasks.map(t => t.order)) 
+        : -1;
+      
+      const newTask: Task = {
+        id: uuidv4(),
+        title,
+        memo: '',
+        completed: false,
+        tags: [],
+        parentId,
+        order: maxOrder + 1,
+      };
+      return { ...prev, tasks: [...prev.tasks, newTask] };
+    });
   }, [setState]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
@@ -88,13 +122,21 @@ export function useTodoStore() {
   }, [setState]);
 
   const addFolder = useCallback((name: string, parentId: string | null = null) => {
-    const newFolder: Folder = {
-      id: uuidv4(),
-      name,
-      parentId,
-    };
-    setState(prev => ({ ...prev, folders: [...prev.folders, newFolder] }));
-    return newFolder.id;
+    setState(prev => {
+      // 同じ親のフォルダの中で最大のorderを取得
+      const siblingFolders = prev.folders.filter(f => f.parentId === parentId);
+      const maxOrder = siblingFolders.length > 0 
+        ? Math.max(...siblingFolders.map(f => f.order)) 
+        : -1;
+      
+      const newFolder: Folder = {
+        id: uuidv4(),
+        name,
+        parentId,
+        order: maxOrder + 1,
+      };
+      return { ...prev, folders: [...prev.folders, newFolder] };
+    });
   }, [setState]);
 
   const updateFolder = useCallback((id: string, updates: Partial<Folder>) => {
@@ -137,17 +179,33 @@ export function useTodoStore() {
   const moveItem = useCallback((itemId: string, newParentId: string | null, itemType: 'task' | 'folder') => {
     setState(prev => {
       if (itemType === 'task') {
+        // 新しい親の下での最大orderを取得
+        const newSiblings = prev.tasks.filter(t => t.parentId === newParentId && t.id !== itemId);
+        const maxOrder = newSiblings.length > 0 
+          ? Math.max(...newSiblings.map(t => t.order)) 
+          : -1;
+        
         return {
           ...prev,
           tasks: prev.tasks.map(task =>
-            task.id === itemId ? { ...task, parentId: newParentId } : task
+            task.id === itemId 
+              ? { ...task, parentId: newParentId, order: maxOrder + 1 } 
+              : task
           ),
         };
       } else {
+        // 新しい親の下での最大orderを取得
+        const newSiblings = prev.folders.filter(f => f.parentId === newParentId && f.id !== itemId);
+        const maxOrder = newSiblings.length > 0 
+          ? Math.max(...newSiblings.map(f => f.order)) 
+          : -1;
+        
         return {
           ...prev,
           folders: prev.folders.map(folder =>
-            folder.id === itemId ? { ...folder, parentId: newParentId } : folder
+            folder.id === itemId 
+              ? { ...folder, parentId: newParentId, order: maxOrder + 1 } 
+              : folder
           ),
         };
       }
@@ -176,6 +234,40 @@ export function useTodoStore() {
     setContextMenu({ isOpen: false, x: 0, y: 0, taskId: null });
   }, []);
 
+  const sortItems = useCallback((sortedItems: (Task | Folder)[], itemType: 'task' | 'folder') => {
+    setState(prev => {
+      if (itemType === 'task') {
+        const sortedTasks = sortedItems as Task[];
+        // 新しいorder値を設定
+        const updatedTasks = sortedTasks.map((task, index) => ({
+          ...task,
+          order: index
+        }));
+        
+        // 他のタスクとマージ
+        const otherTasks = prev.tasks.filter(task => 
+          !sortedItems.some(item => item.id === task.id)
+        );
+        
+        return { ...prev, tasks: [...updatedTasks, ...otherTasks] };
+      } else {
+        const sortedFolders = sortedItems as Folder[];
+        // 新しいorder値を設定
+        const updatedFolders = sortedFolders.map((folder, index) => ({
+          ...folder,
+          order: index
+        }));
+        
+        // 他のフォルダとマージ
+        const otherFolders = prev.folders.filter(folder => 
+          !sortedItems.some(item => item.id === folder.id)
+        );
+        
+        return { ...prev, folders: [...updatedFolders, ...otherFolders] };
+      }
+    });
+  }, [setState]);
+
   return {
     state,
     contextMenu,
@@ -193,5 +285,6 @@ export function useTodoStore() {
     getFilteredTasks,
     openContextMenu,
     closeContextMenu,
+    sortItems,
   };
 }

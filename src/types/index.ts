@@ -5,12 +5,14 @@ export interface Task {
   completed: boolean;
   tags: ('today' | 'week')[];
   parentId: string | null;
+  order: number;
 }
 
 export interface Folder {
   id: string;
   name: string;
   parentId: string | null;
+  order: number;
 }
 
 export type TabType = 'all' | 'week' | 'today';

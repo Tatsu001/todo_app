@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Task, Folder, TabType } from '../types';
-import FolderTree from './FolderTree';
+import FolderTree from './FolderTree.fixed';
 import TaskModal from './TaskModal';
 import ContextMenu from './ContextMenu';
 

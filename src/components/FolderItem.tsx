@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Folder, Task } from '../types';
-import { getItemDepth } from '../utils/helpers';
+// import { getItemDepth } from '../utils/helpers';
 
 interface FolderItemProps {
   folder: Folder;
@@ -14,13 +14,12 @@ interface FolderItemProps {
 const FolderItem: React.FC<FolderItemProps> = ({
   folder,
   index,
-  allItems,
+  allItems: _allItems,
   onFolderUpdate,
   onFolderDelete,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(folder.name);
-  const depth = getItemDepth(folder.id, allItems);
 
   const handleSubmit = () => {
     const trimmedName = editName.trim();
@@ -53,7 +52,6 @@ const FolderItem: React.FC<FolderItemProps> = ({
           `}
           style={{
             ...provided.draggableProps.style,
-            marginLeft: `${depth * 20}px`,
           }}
         >
           <div className="flex items-center gap-3">
