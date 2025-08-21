@@ -8,6 +8,7 @@ import TaskModal from './components/TaskModal.simple';
 import NameInputModal from './components/NameInputModal';
 import MoveModal from './components/MoveModal';
 import SortModal from './components/SortModal';
+import DataManagementModal from './components/DataManagementModal';
 
 function App() {
   console.log('App with complete features rendering...');
@@ -27,7 +28,8 @@ function App() {
       moveItem,
       addTagToTask,
       removeTagFromTask,
-      sortItems
+      sortItems,
+      importData
     } = useTodoStore();
     
     // Context Menu State
@@ -72,6 +74,11 @@ function App() {
       items: [] as (Task | Folder)[],
       itemType: '' as 'task' | 'folder',
       parentId: null as string | null,
+    });
+    
+    // Data Management Modal State
+    const [dataManagementModal, setDataManagementModal] = useState({
+      isOpen: false,
     });
     
     // Folder Editing Handlers
@@ -187,6 +194,19 @@ function App() {
 
     const handleSort = (sortedItems: (Task | Folder)[]) => {
       sortItems(sortedItems, sortModal.itemType);
+    };
+    
+    // Data Management Modal Handlers
+    const openDataManagementModal = () => {
+      setDataManagementModal({ isOpen: true });
+    };
+
+    const closeDataManagementModal = () => {
+      setDataManagementModal({ isOpen: false });
+    };
+
+    const handleImportData = (data: any, mergeMode: 'replace' | 'merge') => {
+      importData(data, mergeMode);
     };
     
     const filteredTasks = getFilteredTasks(state.activeTab);
@@ -427,10 +447,21 @@ function App() {
       <div className="min-h-screen bg-gray-50" onClick={closeContextMenu}>
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="max-w-4xl mx-auto px-4 py-6">
-            <h1 className="text-2xl font-bold text-gray-900">Todo App</h1>
-            <p className="text-gray-600 mt-1">
-              Tasks: {filteredTasks.length}, Folders: {state.folders.length} | Right-click for options
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Todo App</h1>
+                <p className="text-gray-600 mt-1">
+                  Tasks: {filteredTasks.length}, Folders: {state.folders.length} | Right-click for options
+                </p>
+              </div>
+              <button
+                onClick={openDataManagementModal}
+                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                title="データのインポート・エクスポート"
+              >
+                📁 データ管理
+              </button>
+            </div>
           </div>
         </header>
         
@@ -584,6 +615,14 @@ function App() {
           itemType={sortModal.itemType}
           onClose={closeSortModal}
           onSave={handleSort}
+        />
+
+        {/* Data Management Modal */}
+        <DataManagementModal
+          isOpen={dataManagementModal.isOpen}
+          currentData={state}
+          onClose={closeDataManagementModal}
+          onImport={handleImportData}
         />
       </div>
     );

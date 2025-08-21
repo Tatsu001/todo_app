@@ -268,6 +268,47 @@ export function useTodoStore() {
     });
   }, [setState]);
 
+  const importData = useCallback((importedData: TodoState, mergeMode: 'replace' | 'merge') => {
+    setState(prev => {
+      if (mergeMode === 'replace') {
+        // 完全置換
+        return importedData;
+      } else {
+        // マージ（既存IDと重複しないもののみ追加）
+        const existingTaskIds = new Set(prev.tasks.map(t => t.id));
+        const existingFolderIds = new Set(prev.folders.map(f => f.id));
+        
+        const newTasks = importedData.tasks.filter(task => !existingTaskIds.has(task.id));
+        const newFolders = importedData.folders.filter(folder => !existingFolderIds.has(folder.id));
+        
+        // 新しいアイテムのorder値を調整
+        const maxTaskOrder = prev.tasks.length > 0 
+          ? Math.max(...prev.tasks.map(t => t.order)) 
+          : -1;
+        const maxFolderOrder = prev.folders.length > 0 
+          ? Math.max(...prev.folders.map(f => f.order)) 
+          : -1;
+        
+        const adjustedTasks = newTasks.map((task, index) => ({
+          ...task,
+          order: maxTaskOrder + 1 + index
+        }));
+        
+        const adjustedFolders = newFolders.map((folder, index) => ({
+          ...folder,
+          order: maxFolderOrder + 1 + index
+        }));
+        
+        return {
+          ...prev,
+          tasks: [...prev.tasks, ...adjustedTasks],
+          folders: [...prev.folders, ...adjustedFolders],
+          // activeTabは現在のものを保持
+        };
+      }
+    });
+  }, [setState]);
+
   return {
     state,
     contextMenu,
@@ -286,5 +327,6 @@ export function useTodoStore() {
     openContextMenu,
     closeContextMenu,
     sortItems,
+    importData,
   };
 }
